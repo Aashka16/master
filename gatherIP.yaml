@@ -1,0 +1,31 @@
+---
+- name: Gather EC2 Instances Information
+  hosts: local
+  connection: local
+  gather_facts: True
+  vars:
+    instance_type: t2.micro
+    security_group: AnsibleSG
+    image: ami-5b673c34
+    keypair: NewForAnsible
+    region: ap-south-1
+    count: 1
+  tasks:
+    - ec2_remote_facts:
+        region: "{{ region }}"
+        filters:
+          instance-state-name: running
+          "tag:Name": DockerEC2
+      register: ec2_info
+
+    - name: Print Information
+      debug:
+        msg: "{{ item.public_ip_address }}"
+      with_items: "{{ ec2_info.instances }}"
+
+    - name: Add the EC2 instance(s) to the local host group (located inside the directory)
+      lineinfile:
+        dest="/etc/ansible/hosts"
+        regexp={{ item.public_ip_address }}
+        insertafter="[DockerServer]" line={{ item.public_ip_address }} 
+      with_items: "{{ ec2_info.instances }}"  
